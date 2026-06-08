@@ -1,0 +1,52 @@
+# Observability stack: the API + PostgreSQL, scraped by Prometheus and
+# visualised in Grafana. Run from this directory:
+#   docker compose up --build
+# Then open Grafana at http://localhost:13000 (admin/admin) — the fittrack
+# dashboard and Prometheus datasource are provisioned automatically.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: fittrack
+      POSTGRES_USER: fittrack
+      POSTGRES_PASSWORD: fittrack
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fittrack"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: ..
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/fittrack
+      SPRING_DATASOURCE_USERNAME: fittrack
+      SPRING_DATASOURCE_PASSWORD: fittrack
+    ports:
+      - "18080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  prometheus:
+    image: prom/prometheus:v2.53.0
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "19090:9090"
+    depends_on:
+      - app
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "13000:3000"
+    depends_on:
+      - prometheus
