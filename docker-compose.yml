@@ -1,0 +1,35 @@
+# Local one-command stack: API + PostgreSQL.
+#   docker compose up --build
+# Host ports are deliberately offset (18080 / 15432) to avoid clashing with
+# other services that commonly occupy 8080 / 5432.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: fittrack
+      POSTGRES_USER: fittrack
+      POSTGRES_PASSWORD: fittrack
+    ports:
+      - "15432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fittrack"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    ports:
+      - "18080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/fittrack
+      SPRING_DATASOURCE_USERNAME: fittrack
+      SPRING_DATASOURCE_PASSWORD: fittrack
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pgdata:
