@@ -1,0 +1,89 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fittrack-app-config
+  namespace: fittrack
+data:
+  # Non-secret application configuration. The datasource URL points at the
+  # in-cluster postgres Service by its DNS name.
+  SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/fittrack
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fittrack-api
+  namespace: fittrack
+  labels:
+    app.kubernetes.io/name: fittrack-api
+    app.kubernetes.io/part-of: fittrack
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: fittrack-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: fittrack-api
+        app.kubernetes.io/part-of: fittrack
+      annotations:
+        # Scraped by a Prometheus configured with the kubernetes_sd pod role.
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /actuator/prometheus
+        prometheus.io/port: "8080"
+    spec:
+      containers:
+        - name: fittrack-api
+          # Built locally and loaded into the cluster (see k8s/README.md):
+          #   kind load docker-image fittrack-api:latest
+          image: fittrack-api:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: fittrack-app-config
+          env:
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: fittrack-db
+                  key: POSTGRES_USER
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: fittrack-db
+                  key: POSTGRES_PASSWORD
+          # Spring Boot Actuator exposes dedicated liveness/readiness probes.
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 250m
+              memory: 384Mi
+            limits:
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: fittrack-api
+  namespace: fittrack
+  labels:
+    app.kubernetes.io/name: fittrack-api
+spec:
+  selector:
+    app.kubernetes.io/name: fittrack-api
+  ports:
+    - port: 80
+      targetPort: 8080
