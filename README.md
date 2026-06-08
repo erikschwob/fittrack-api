@@ -35,7 +35,7 @@ and **training volume per muscle group**.
 - [Observability](#observability)
 - [Roadmap](#roadmap)
 - [Known limitations](#known-limitations)
-- [AI engineering note](#ai-engineering-note)
+- [Engineering note](#engineering-note)
 
 ---
 
@@ -260,11 +260,14 @@ These are deliberate, documented scope cuts — not oversights.
 
 ---
 
-## AI engineering note
+## Engineering note
 
-Built with AI pair-programming assistance for implementation speed. The domain
-modelling, architecture decisions and the choice of which DevOps stages to
-demonstrate are my own.
+I conceived the project, scoped the domain, and made the critical design and
+architecture decisions: the layered structure, the domain model, the choice of
+stack (Spring Boot, PostgreSQL, Flyway) and the deliberate Docker → CI →
+Kubernetes → observability progression. I used AI pair-programming tools to
+speed up implementation and cut boilerplate, and reviewed all code before
+committing it.
 
 ## License
 
